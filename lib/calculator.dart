@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:function_tree/function_tree.dart';
 
@@ -9,8 +10,10 @@ class Calculator extends StatefulWidget {
 }
 
 class _CalculatorState extends State<Calculator> {
-  String input = '';
+  final input = TextEditingController();
   String result = '0';
+  int brackets = 0;
+  int position = -1; // to memorise first opened bracket
 
   List<String> buttonlist = [
     'AC',
@@ -48,12 +51,22 @@ class _CalculatorState extends State<Calculator> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Container(
+                  //   padding: const EdgeInsets.all(20),
+                  //   child: Text(
+                  //     input,
+                  //     style: const TextStyle(
+                  //         fontSize: 30, fontWeight: FontWeight.bold),
+                  //   ),
+                  // ),
                   Container(
                     padding: const EdgeInsets.all(20),
-                    child: Text(
-                      input,
-                      style: const TextStyle(
-                          fontSize: 30, fontWeight: FontWeight.bold),
+                    child: TextField(
+                      readOnly: true,
+                      showCursor: true,
+                      controller: input,
+                      textAlign: TextAlign.right,
+                      decoration: null,
                     ),
                   ),
                   Container(
@@ -100,7 +113,7 @@ class _CalculatorState extends State<Calculator> {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             backgroundColor: getbg(txt),
-            textStyle: TextStyle(
+            textStyle: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
             )),
@@ -118,22 +131,112 @@ class _CalculatorState extends State<Calculator> {
   }
 
   void buttonstat(String txt) {
+    var pos = input.selection.base.offset;
+    if (pos == -1) {
+      pos = input.text.length;
+    }
     if (txt == 'AC') {
-      input = '';
+      input.clear();
       result = '0';
+      brackets = 0;
+      position = -1;
       return;
     }
     if (txt == 'C') {
-      input = input.substring(0, input.length - 1);
+      if (input.text.isEmpty || pos == 0) return;
+      if (input.text[pos - 1] == '(') {
+        brackets--;
+      }
+      if (input.text[pos - 1] == ')') {
+        brackets++;
+      }
+      var pre = input.text.substring(0, pos - 1);
+      var suf = input.text.substring(pos, input.text.length);
+      input.text = pre + suf;
+      result = getresult(input.text, brackets);
       return;
     }
     if (txt == '=') {
-      result = input.interpret().toString();
-      input = result;
+      result = getresult(input.text, brackets);
+
+      input.text = result;
+      brackets = 0;
       return;
     }
-    result = '0';
-    input += txt;
+
+    if (txt == '(') {
+      print(brackets);
+      if (pos == 0 || input.text[pos - 1] == '(') {
+        position = (pos == 0) ? 0 : position;
+        brackets++;
+        input.text =
+            '${input.text.substring(0, pos)}(${input.text.substring(pos, input.text.length)}';
+        return;
+      }
+      if (brackets == 0) {
+        brackets++;
+        int? number = int.tryParse(input.text[pos - 1]);
+        position = (pos < position || position == -1) ? pos : position;
+        if (number != null || input.text[pos - 1] == ')') {
+          print(input.text[input.text.length - 1]);
+
+          input.text =
+              '${input.text.substring(0, pos)}*(${input.text.substring(pos, input.text.length)}';
+          return;
+        }
+      } else {
+        if (input.text[pos - 1] == '+' ||
+            input.text[pos - 1] == '-' ||
+            input.text[pos - 1] == '*' ||
+            input.text[pos - 1] == '/') {
+          brackets++;
+          input.text =
+              '${input.text.substring(0, pos)}(${input.text.substring(pos, input.text.length)}';
+        } else {
+          if (pos == input.text.length) {
+            input.text += ')';
+          } else {
+            if (pos < position) {
+              position = pos;
+              brackets++;
+              input.text =
+                  '${input.text.substring(0, pos)}*(${input.text.substring(pos, input.text.length)}';
+              return;
+            } else {
+              input.text =
+                  '${input.text.substring(0, pos)})*${input.text.substring(pos, input.text.length)}';
+            }
+          }
+          brackets--;
+        }
+        return;
+      }
+    }
+    if (txt == '/' || txt == '*' || txt == '+' || txt == '-') {
+      if (input.text[pos - 1] == '/' ||
+          input.text[pos - 1] == '*' ||
+          input.text[pos - 1] == '+' ||
+          input.text[pos - 1] == '-') {
+        input.text = input.text.substring(0, pos - 1) +
+            txt +
+            input.text.substring(pos, input.text.length);
+      } else {
+        input.text = input.text.substring(0, pos) +
+            txt +
+            input.text.substring(pos, input.text.length);
+      }
+      return;
+    }
+    if (pos != 0 && input.text[pos - 1] == ')') {
+      input.text =
+          '${input.text.substring(0, pos)}*$txt${input.text.substring(pos, input.text.length)}';
+      return;
+    }
+    input.text = input.text.substring(0, pos) +
+        txt +
+        input.text.substring(pos, input.text.length);
+
+    result = getresult(input.text, brackets);
   }
 
   getbg(String texte) {
@@ -157,5 +260,13 @@ class _CalculatorState extends State<Calculator> {
       return Colors.orange;
     }
     return Colors.white;
+  }
+
+  String getresult(String input, int n) {
+    for (int i = 0; i < n; i++) {
+      input += ')';
+    }
+
+    return (input).interpret().toString();
   }
 }

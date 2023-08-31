@@ -1,0 +1,4 @@
+#Fri Sep 01 01:03:11 CEST 2023
+base.0=C\:\\Users\\Yahia\\OneDrive\\Bureau\\calculator\\build\\app\\intermediates\\dex\\debug\\mergeDexDebug\\classes.dex
+path.0=classes.dex
+renamed.0=classes.dex
